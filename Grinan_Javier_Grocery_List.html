@@ -1,0 +1,375 @@
+<!doctype html>
+<html lang="en" class="h-full">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Grocery List</title>
+  <script src="https://unpkg.com/vue@3"></script>
+
+  <!-- Including MDB via CDN -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" />
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/mdb-ui-kit/7.3.2/mdb.min.css" rel="stylesheet" />
+  <!-- Custom styles -->
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,200..1000;1,200..1000&display=swap');
+    body {
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      padding: 50px;
+      background-color: #262626;
+      font-family: "Nunito", sans-serif;
+    }
+    #app {
+      display: flex;
+      flex-direction: column;
+      width: 100%;
+    }
+    form {
+      display: flex;
+      margin-bottom: 15px;
+      align-self: center;
+    }
+
+    form>div {
+      margin-right: 20px;
+    }
+    form>div:first-of-type {
+      max-width: 15em;
+    }
+    form>div:last-of-type {
+      max-width: 5em;
+    }
+    section {
+      align-self: center;
+      display: flex;
+      flex-direction: column;
+      margin-top: 20px;
+      width: 70vw;
+      align-items: center;
+      transition: 200ms;
+    }
+    .list-group-light {
+      align-items: flex-start;
+      width: 100%;
+      padding-left: 30%;
+      position: relative;
+      transition: 200ms;
+    }
+    @media screen and (max-width: 778px) {
+      section {
+        align-self: flex-start;
+        transition: 200ms;
+        align-items: flex-start;
+      }
+      .list-group-light {
+        transition: 200ms;
+        padding-left: 0;
+      }
+    }
+
+    h2 {
+      font-weight: lighter;
+      margin-bottom: 20px;
+    }
+    .list-group-item {
+      background-color: rgb(227, 252, 255);
+      margin-right: 5px;
+    }
+    .list-group-item:last-of-type {
+      margin-right: 20px;
+    }
+    .list-group-light>div {
+      display: flex;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+    @keyframes zoom-in {
+      from {
+        opacity: 0;
+        height: 0;
+      }
+      to {
+        opacity: 1;
+        height: 55.59px;
+      }
+    }
+    @keyframes zoom-out {
+      from {
+        opacity: 1;
+        height: 55.59px;
+      }
+      to {
+        opacity: 0;
+        height: 0;
+      }
+    }
+    .grocery-item {
+      position: relative;
+      animation-timing-function: ease;
+      animation-duration: 500ms;
+      animation-name: zoom-in;
+    }
+
+    .list-group-light .btn {
+      align-self: stretch;
+    }
+    .btn-dark {
+      background-color: #1f1f1f;
+      box-shadow: 0 3px 5px #060606;
+    }
+    .btn-light {
+      font-weight: bolder;
+      color: black;
+    }
+
+    i {
+      margin-left: 20px;
+      font-size: 1.7em;
+      color: rgb(255, 134, 100);
+      text-shadow: 0 0 3px rgb(255, 113, 73);
+      transition: 200ms;
+    }
+    i:hover {
+      text-shadow: 0 0 6px rgb(255, 113, 73);
+    }
+  </style>
+</head>
+
+<body class="text-light">
+  <div id="app">
+    <form @submit.prevent='addItem'>
+      <div class="form-outline" data-mdb-input-init>
+        <input
+          type="text"
+          id="typeText"
+          class="form-control text-light"
+          v-model="newItemName"
+          required
+        />
+        <label class="form-label" for="typeText">Name of the new item</label>
+      </div>
+      <div class="form-outline" data-mdb-input-init>
+        <input
+          type="number"
+          maxlength="2"
+          min="1"
+          max="100"
+          id="typeNumber"
+          class="form-control text-light"
+          v-model="newItemQuantity"
+          required
+        />
+        <label class="form-label" for="typeNumber">Qty</label>
+      </div>
+      <button 
+        type="submit" 
+        class="btn btn-light fw-bold" 
+        data-mdb-ripple-init 
+        data-mdb-ripple-color="dark"
+
+      > Add </button>
+    </form>
+    <span class="border-bottom border-light"></span>
+    <section>
+      <h2>Grocery List</h2>
+      <!-- Pending Items -->
+      <div
+        v-if="pendingItems.length"
+        class="list-group-light"
+        >
+        <app-grocery-item
+          v-for="item in pendingItems"
+          :key="item.id"
+          @delete-item="deleteItem"
+          @change-status="changeItemStatus"
+          :itemid='item.id'
+          :name='item.name'
+          :quantity='item.quantity'
+          :pending='item.pending'
+        ></app-grocery-item>
+      </div>
+      <!-- Picked Up Items -->
+      <div
+        v-if="pickedUpItems.length"
+        class="list-group-light"
+      >
+        <app-grocery-item
+          v-for="item in pickedUpItems"
+          :key="item.id"
+          @delete-item="deleteItem"
+          @change-status="changeItemStatus"
+          :itemid='item.id'
+          :name='item.name'
+          :quantity='item.quantity'
+          :pending='item.pending'
+        ></app-grocery-item>
+      </div>
+    </section>
+  </div>
+
+  <!-- MDB -->
+  <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mdb-ui-kit/7.3.2/mdb.umd.min.js">
+  </script>
+  <script>
+    let app = {
+      components: {
+        'app-grocery-item': {
+          props: {
+            itemid: {
+              type: Number,
+              required: true
+            },
+            name: {
+              type: String,
+              required: true
+            },
+            quantity: {
+              type: Number,
+              required: true
+            },
+            pending: {
+              type: Boolean,
+              required: true
+            },
+          },
+          data() {
+            return {
+              onAnimation: ''
+            };
+          },
+          computed: {
+            checkboxStyle() {
+              // Defines the text and the class in charge of the background color
+              // for the checkbox button
+              if (this.pending) {
+                return {
+                  backgroundClass: 'btn-dark',
+                  text: 'Pending'
+                };
+              }
+              else {
+                return {
+                  backgroundClass: 'btn-light',
+                  text: 'Picked Up'
+                };
+              }
+            },
+          },
+          template: `
+            <div
+              class='grocery-item'
+              :style='onAnimation'
+            >
+              <li class="list-group-item px-3 border-0 rounded-3 list-group-item-light text-dark">
+                {{ name }}
+              </li>
+              <li class="list-group-item px-3 border-0 rounded-3 list-group-item-light text-dark">
+                {{ quantity }}
+              </li>
+              <button 
+                type="button" 
+                class="btn fw-bold"
+                :class="checkboxStyle.backgroundClass"
+                data-mdb-ripple-init 
+                data-mdb-ripple-color="dark"
+                @click="handleCheckBoxClick"
+              > {{ checkboxStyle.text }} </button>
+              <i class="fa-solid fa-x" @click='handleDeleteButtonClick'></i>
+            </div>
+          `,
+          methods: {
+            handleDeleteButtonClick() {
+              this.onAnimation = {
+                animationName: 'zoom-out',
+              };
+
+              // Emit an event to delete the item a little before the animation end
+              setTimeout(() => {
+                this.$emit('delete-item', this.itemid, this.pending);
+              }, 300);
+            },
+            handleCheckBoxClick(e) {              
+              this.onAnimation = {
+                animationName: 'zoom-out',
+              };
+
+              // Emit an event to change the status of the item a little before the animation end
+              setTimeout(() => {
+                this.$emit('change-status', this.itemid, this.pending);
+              }, 300);
+            }
+          }
+        }
+      },
+      data() {
+        return {
+          newItemName: '', // uses v-model
+          newItemQuantity: null, // uses v-model
+          pendingItems: [],
+          pickedUpItems: [],
+          idCounter: 0,
+        }
+      },
+      methods: {
+        getNewId() {
+          return ++this.idCounter;
+        },
+        addItem() {
+          // The items are always added as pending
+          this.pendingItems.push(
+            {
+              id: this.getNewId(),
+              name: this.newItemName,
+              quantity: this.newItemQuantity,
+              pending: true
+            }
+          );
+          // Reset input values
+          this.newItemName = '';
+          this.newItemQuantity = null;
+        },
+        deleteItem(itemId, pending) {
+          // Delete item from the correspondent list
+          const container = pending ? this.pendingItems : this.pickedUpItems;
+
+          const len = container.length;
+          for (let i = 0; i < len; i++) {
+            if (itemId != container[i].id) continue;
+            container.splice(i, 1);
+            break;
+          }
+        },
+        changeItemStatus(itemId, pending) {
+          // Change status from pending to picked up, or the other way
+
+          const containers = (
+            pending ? {
+              from: this.pendingItems,
+              to: this.pickedUpItems
+            } : {
+              from: this.pickedUpItems,
+              to: this.pendingItems
+            }
+          );
+
+          const len = containers.from.length;
+          for (let i = 0; i < len; i++) {
+            if (itemId != containers.from[i].id) continue;
+            // Swap item
+            containers.to.push(containers.from[i]);
+            // Change 'pending' value
+            const pendingValue = containers.to[containers.to.length - 1].pending
+            containers.to[containers.to.length - 1].pending = !pendingValue;
+            // Remove item
+            containers.from.splice(i, 1);
+            break;
+          }
+        },
+      }
+    };
+    Vue.createApp(app).mount('#app');
+  </script>
+</body>
+
+</html>
